@@ -1,0 +1,68 @@
+library(tidyverse)
+library(ggthemes)
+library(janitor)
+library(survival)
+
+# Set plot theme
+old <- theme_set(theme_tufte() + theme(text = element_text(family = "Menlo")))
+
+# Get Data ----
+
+# Source: Data Camp
+file_url <- "https://assets.datacamp.com/production/repositories/1861/datasets/284a58cc6f9c5873937a97eca0420b980b5e5b23/survivalDataExercise.csv"
+dat <- read_csv(file_url)
+
+# EDA ---- 
+
+# group by repurchase
+dat %>% 
+  ggplot(aes(daysSinceFirstPurch, fill = factor(boughtAgain))) + 
+  geom_histogram(bins = 30) + 
+  facet_wrap(~ boughtAgain) + 
+  labs(x = "Days Since Purchase", y = "Count", fill = "Repurchase")
+
+# Kaplan-Meier Analysis ----
+
+# create a survival object
+surv_obj <- Surv(dat$daysSinceFirstPurch, dat$boughtAgain)
+# fit KM curve
+# one of “kaplan-meier”, “fleming-harrington”, “fh2”
+fit <- survfit(surv_obj ~ 1, type = "kaplan-meier")
+plot(fit, conf.int = FALSE) 
+
+# group by voucher
+fit.gender <- survfit(surv_obj ~ voucher, data = dat)
+plot(fit.gender, conf.int = FALSE, lty = 2:3)
+legend(120, .9, legend = c("no", "yes"), lty = 2:3)
+
+# Cox Proportional Hazards Model ---- 
+
+# fit Cox model
+fit.cph <- coxph(surv_obj ~ gender + voucher + returned + shoppingCartValue, data = dat)
+summary(fit.cph)
+
+# using survminer
+survminer::ggforest(fit.cph, data = dat)
+
+
+# Validate Model Assumptions ----
+
+# look at p-value
+fit.coxzph <- cox.zph(fit = fit.cph)
+print(fit.coxzph)
+
+# line supposed to be straight
+plot(fit.coxzph, var = "gendermale")
+
+# Prediction ---
+
+# some new data
+newCustomer <- data.frame(daysSinceFirstPurch = 21, 
+                          shoppingCartValue = 99.9, 
+                          gender = "female", 
+                          voucher = 1, 
+                          returned = 0, 
+                          stringsAsFactors = FALSE)
+
+# predict
+survfit(fit.cph, newdata = newCustomer)
