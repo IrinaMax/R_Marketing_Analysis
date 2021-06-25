@@ -72,7 +72,7 @@ ggplot(salesData) +
 salesData
 salesSimpleModel <- lm(salesThisMon ~salesLast3Mon, 
                        data = salesData)
-summery(salesSimpleModel)
+summary(salesSimpleModel)
 # Looking at model summary
 # summary(salesSimpleModel)
 # Call:
